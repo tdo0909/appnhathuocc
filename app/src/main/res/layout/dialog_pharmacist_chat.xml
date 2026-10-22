@@ -38,7 +38,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Dược sĩ tư vấn trực tuyến 24/7 💬"
+                android:text="Trợ lý sức khỏe AI · 24/7"
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -46,7 +46,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="● Đang hoạt động • Hotline: 1800 6928"
+                android:text="Thông tin tham khảo · Hotline: 1800 6928"
                 android:textColor="@color/primary_light"
                 android:textSize="11sp" />
         </LinearLayout>

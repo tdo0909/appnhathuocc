@@ -549,6 +549,12 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                    android:id="@+id/home_category_products_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
                 <!-- Activity and promotion announcements -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -648,52 +654,52 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
-        <include layout="@layout/view_bottom_navigation" />
+        <include
+            android:id="@+id/bottom_navigation"
+            layout="@layout/view_bottom_navigation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true" />
 
         <!-- Floating pharmacist shortcut -->
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/btn_floating_mascot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:layout_alignParentEnd="true"
             android:layout_above="@id/bottom_navigation"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="16dp"
             android:clickable="true"
-            android:elevation="12dp"
             android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical">
+            android:contentDescription="Mở trợ lý tư vấn sức khỏe AI"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="8dp"
+            app:rippleColor="@color/primary_light"
+            app:strokeColor="@color/primary_light_2"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                app:cardBackgroundColor="@color/white"
-                app:cardCornerRadius="32dp"
-                app:cardElevation="8dp"
-                app:strokeColor="@color/primary"
-                app:strokeWidth="2dp">
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:foreground="?attr/selectableItemBackground">
 
                 <ImageView
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="Tư vấn Dược sĩ 24/7"
-                    android:src="@drawable/ic_pharmacist_mascot" />
-            </com.google.android.material.card.MaterialCardView>
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="5dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_ai_health_avatar" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:background="@drawable/bg_button_primary"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
-                android:text="Dược sĩ 24/7 💬"
-                android:textColor="@color/white"
-                android:textSize="10.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+                <View
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="2dp"
+                    android:background="@drawable/bg_ai_status_online" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </RelativeLayout>
 

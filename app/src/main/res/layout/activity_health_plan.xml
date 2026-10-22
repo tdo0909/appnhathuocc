@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:text="Tư Vấn Sức Khỏe &amp; Lộ Trình"
+            android:text="Kế hoạch sức khỏe"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -176,10 +176,26 @@
                         android:layout_height="48dp"
                         android:layout_marginTop="16dp"
                         android:background="@drawable/bg_button_primary"
-                        android:text="SẮP XẾP HƯỚNG ĐIỀU TRỊ &amp; LỘ TRÌNH"
+                        android:text="TẠO KẾ HOẠCH SỨC KHỎE"
                         android:textColor="@color/white"
                         android:textSize="13sp"
                         android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btn_record_professional_plan"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:text="GHI CHÚ CHỈ ĐỊNH CHUYÊN GIA"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/btn_view_saved_plans"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:text="XEM KẾ HOẠCH ĐÃ LƯU"
+                        android:textSize="13sp" />
 
                 </LinearLayout>
 
@@ -207,7 +223,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📋 Lộ Trình Sức Khỏe &amp; Hướng Điều Trị Gợi Ý"
+                        android:text="📋 Kế hoạch sức khỏe gợi ý"
                         android:textColor="@color/primary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -238,6 +254,15 @@
                         android:text="👩‍⚕️ Dược sĩ đang lập lộ trình..."
                         android:textColor="@color/text_primary"
                         android:textSize="14sp" />
+
+                    <Button
+                        android:id="@+id/btn_save_health_plan"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="12dp"
+                        android:text="LƯU KẾ HOẠCH NÀY"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
 
                 </LinearLayout>
 

@@ -29,7 +29,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -205,9 +204,11 @@ public class CheckoutActivity extends AppCompatActivity {
             orderJson.put("payment_method", paymentMethod);
             orderJson.put("subtotal", subtotal);
             orderJson.put("shippingFee", shippingFee);
+            orderJson.put("shipping_fee", shippingFee);
             orderJson.put("totalAmount", total);
             orderJson.put("total_amount", total);
             orderJson.put("date", currentDate);
+            orderJson.put("userPhone", com.example.appnhathuoc.utils.UserManager.getInstance(this).getUserPhone());
 
             org.json.JSONArray itemsJson = new org.json.JSONArray();
             for (CartItem ci : cartItems) {
@@ -224,10 +225,18 @@ public class CheckoutActivity extends AppCompatActivity {
             }
             orderJson.put("items", itemsJson);
 
+            btnPlaceOrder.setEnabled(false);
             com.example.appnhathuoc.api.ApiClient.placeOrder(orderJson, new com.example.appnhathuoc.api.ApiClient.ApiCallback<org.json.JSONObject>() {
                 @Override
                 public void onSuccess(org.json.JSONObject result) {
-                    String orderCode = result.optString("order_code", "MC" + (100000 + new Random().nextInt(900000)));
+                    String orderCode = result == null
+                            ? ""
+                            : result.optString("order_code", result.optString("orderId", ""));
+                    if (orderCode.trim().isEmpty()) {
+                        btnPlaceOrder.setEnabled(true);
+                        Toast.makeText(CheckoutActivity.this, "Đơn hàng đã gửi nhưng không nhận được mã đơn. Vui lòng làm mới danh sách đơn hàng.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
 
                     Order newOrder = new Order(
                             orderCode,
@@ -249,24 +258,8 @@ public class CheckoutActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(String errorMessage) {
-                    String orderCode = "MC" + (100000 + new Random().nextInt(900000));
-
-                    Order newOrder = new Order(
-                            orderCode,
-                            currentDate,
-                            cartItems,
-                            total,
-                            "Chờ xác nhận",
-                            name,
-                            phone,
-                            fullAddress,
-                            paymentMethod
-                    );
-
-                    orderManager.addOrder(newOrder);
-                    cartManager.clearCart();
-
-                    showSuccessDialog(name, orderCode);
+                    btnPlaceOrder.setEnabled(true);
+                    Toast.makeText(CheckoutActivity.this, errorMessage, Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -276,9 +269,16 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
     private void showSuccessDialog(String name, String orderCode) {
+        View successView = getLayoutInflater().inflate(R.layout.dialog_order_success, null);
+        TextView tvGreeting = successView.findViewById(R.id.tv_success_greeting);
+        TextView tvOrderCode = successView.findViewById(R.id.tv_success_order_code);
+        TextView tvTotal = successView.findViewById(R.id.tv_success_total);
+        tvGreeting.setText("Cảm ơn " + name + " đã đặt hàng tại nhà thuốc.");
+        tvOrderCode.setText(orderCode);
+        tvTotal.setText(priceFormatter.format(total));
+
         new AlertDialog.Builder(this)
-                .setTitle("Đặt hàng thành công! 🎉")
-                .setMessage("Cảm ơn " + name + " đã đặt hàng tại Nhà Thuốc!\n\nMã đơn hàng: " + orderCode + "\nTổng tiền: " + priceFormatter.format(total) + "\n\nĐơn hàng đã được lưu trên hệ thống và đang chờ nhà thuốc xác nhận.")
+                .setView(successView)
                 .setPositiveButton("Xem đơn hàng", (dialog, which) -> {
                     Intent intent = new Intent(CheckoutActivity.this, OrdersActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);

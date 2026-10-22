@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView btnHamburgerMenu;
     private ViewPager2 viewPagerBanner;
     private RecyclerView rvCategories, rvBestSellers, rvPromotions, rvHomeActivities, rvHomeArticles;
+    private LinearLayout homeCategoryProductsContainer;
     private TextView tvCartBadge, tvSeeAllCategories, tvSeeAllBestSellers, tvSeeAllPromotions, tvSeeAllActivities, tvSeeAllHealth, tvHeaderUserName, tvHomeActivitiesEmpty;
     private TextView tvDrawerUserName, tvDrawerUserPhone;
     private FrameLayout btnCartHeader;
@@ -87,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         rvPromotions = findViewById(R.id.rv_promotions);
         rvHomeActivities = findViewById(R.id.rv_home_activities);
         rvHomeArticles = findViewById(R.id.rv_home_articles);
+        homeCategoryProductsContainer = findViewById(R.id.home_category_products_container);
         tvCartBadge = findViewById(R.id.tv_cart_badge);
         tvSeeAllCategories = findViewById(R.id.tv_see_all_categories);
         tvSeeAllBestSellers = findViewById(R.id.tv_see_all_best_sellers);
@@ -168,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnSend = chatView.findViewById(R.id.btn_send_chat);
         List<com.example.appnhathuoc.api.GeminiApiClient.ChatMessage> conversation = new ArrayList<>();
 
-        String greeting = "👋 Xin chào bạn! Mình là Dược sĩ tư vấn tại Nhà Thuốc. Hôm nay bạn cần mình hỗ trợ điều gì về sức khỏe hoặc cách dùng thuốc?";
+        String greeting = "👋 Xin chào! Mình là trợ lý AI sức khỏe của nhà thuốc, không thay thế dược sĩ/bác sĩ. Mình có thể cung cấp thông tin tham khảo hoặc giúp ghi lại chỉ định bạn đã nhận. Bạn cần hỗ trợ gì?";
         addChatMessage(layoutMessages, scrollChat, greeting, false);
 
         androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -217,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
         addChatMessage(layoutMessages, scrollChat, userText, true);
         btnSend.setEnabled(false);
         etInput.setEnabled(false);
-        TextView typingIndicator = addChatMessage(layoutMessages, scrollChat, "Dược sĩ đang soạn tin...", false);
+        TextView typingIndicator = addChatMessage(layoutMessages, scrollChat, "Trợ lý AI đang soạn phản hồi...", false);
 
         com.example.appnhathuoc.api.GeminiApiClient.generateAiResponse(new ArrayList<>(conversation),
                 new com.example.appnhathuoc.api.GeminiApiClient.GeminiCallback() {
@@ -363,6 +365,7 @@ public class MainActivity extends AppCompatActivity {
                 });
                 rvCategories.setLayoutManager(new LinearLayoutManager(MainActivity.this, LinearLayoutManager.HORIZONTAL, false));
                 rvCategories.setAdapter(adapter);
+                setupHomeCategoryProducts(categories);
             }
 
             @Override
@@ -370,6 +373,59 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Không tải được danh mục: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void setupHomeCategoryProducts(List<Category> categories) {
+        DataRepository.loadProductsFromApi(null, false, false, null, null, new ApiClient.ApiCallback<List<Product>>() {
+            @Override
+            public void onSuccess(List<Product> products) {
+                if (products == null || products.isEmpty()) return;
+
+                for (Category category : categories) {
+                    if (category == null || category.getId() == null || category.getId().trim().isEmpty()) continue;
+
+                    List<Product> categoryProducts = new ArrayList<>();
+                    for (Product product : products) {
+                        if (product != null && category.getId().equalsIgnoreCase(product.getCategoryId())) {
+                            categoryProducts.add(product);
+                        }
+                    }
+                    if (categoryProducts.isEmpty()) continue;
+
+                    View section = getLayoutInflater().inflate(R.layout.item_home_category_section, homeCategoryProductsContainer, false);
+                    TextView title = section.findViewById(R.id.tv_home_category_title);
+                    TextView seeAll = section.findViewById(R.id.tv_home_category_see_all);
+                    RecyclerView recyclerView = section.findViewById(R.id.rv_home_category_products);
+                    title.setText(category.getName());
+                    seeAll.setOnClickListener(v -> openCategoryProducts(category));
+                    recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this, LinearLayoutManager.HORIZONTAL, false));
+                    recyclerView.setAdapter(new ProductAdapter(categoryProducts, new ProductAdapter.OnProductClickListener() {
+                        @Override
+                        public void onProductClick(Product product) {
+                            openProductDetail(product);
+                        }
+
+                        @Override
+                        public void onAddToCartClick(Product product) {
+                            cartManager.addProduct(product, 1);
+                            updateCartBadge();
+                            Toast.makeText(MainActivity.this, "Đã thêm " + product.getName() + " vào giỏ hàng", Toast.LENGTH_SHORT).show();
+                        }
+                    }));
+                    homeCategoryProductsContainer.addView(section);
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {}
+        });
+    }
+
+    private void openCategoryProducts(Category category) {
+        Intent intent = new Intent(MainActivity.this, ProductListActivity.class);
+        intent.putExtra("CATEGORY_ID", category.getId());
+        intent.putExtra("CATEGORY_NAME", category.getName());
+        startActivity(intent);
     }
 
     private void setupPromotions() {

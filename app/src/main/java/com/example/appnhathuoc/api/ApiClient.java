@@ -514,42 +514,40 @@ public class ApiClient {
                     return;
                 }
                 String jsonStr = executeGet("orders.json");
-                List<JSONObject> jsonList = parseJsonContainerToList(jsonStr);
+                Object response = new org.json.JSONTokener(jsonStr).nextValue();
+                if (response instanceof JSONObject
+                        && ((JSONObject) response).has("status")
+                        && !((JSONObject) response).optBoolean("status", true)) {
+                    String message = firstNonEmptyString((JSONObject) response, "message", "error");
+                    throw new Exception(message.isEmpty() ? "Không thể tải danh sách đơn hàng." : message);
+                }
+
+                List<JSONObject> jsonList = parseOrderObjects(response);
                 if (!jsonList.isEmpty()) {
                     List<Order> list = new ArrayList<>();
                     for (JSONObject o : jsonList) {
-                        String oPhone = o.optString("phone", "");
-                        if (!oPhone.equals(phone.trim())) {
+                        String oPhone = firstOrderString(o,
+                                "phone", "customerPhone", "customer_phone", "phoneNumber", "phone_number", "mobile",
+                                "userPhone", "user_phone");
+                        if (oPhone.isEmpty()) {
+                            oPhone = findNestedCustomerPhone(o);
+                        }
+                        if (!orderBelongsToPhone(o, phone)) {
                             continue;
                         }
 
-                        List<CartItem> cartItems = new ArrayList<>();
-                        JSONArray itemsArr = o.optJSONArray("items");
-                        if (itemsArr != null) {
-                            for (int j = 0; j < itemsArr.length(); j++) {
-                                JSONObject ci = itemsArr.getJSONObject(j);
-                                Product prod = new Product(
-                                        "p1",
-                                        ci.optString("product_name", ci.optString("name", "Sản phẩm")),
-                                        ci.optDouble("price", 0),
-                                        0, 0, 5.0f, 0, "", "",
-                                        R.drawable.ic_product_placeholder,
-                                        "", "", "", "", "", false, false
-                                );
-                                cartItems.add(new CartItem(prod, ci.optInt("quantity", 1)));
-                            }
-                        }
+                        List<CartItem> cartItems = parseOrderItems(o.opt("items"));
 
                         list.add(new Order(
-                                o.optString("orderId", "MC1000"),
-                                o.optString("date", "Hôm nay"),
+                                firstOrderString(o, "orderId", "order_id", "orderCode", "order_code", "id"),
+                                firstOrderString(o, "date", "createdAt", "created_at", "orderDate", "order_date"),
                                 cartItems,
-                                o.optDouble("total_amount", o.optDouble("totalAmount", 0)),
-                                o.optString("status", "Chờ xác nhận"),
-                                o.optString("full_name", o.optString("fullName", "Khách hàng")),
+                                firstOrderDouble(o, "total_amount", "totalAmount", "total", "grandTotal", "grand_total"),
+                                normalizeOrderStatus(firstOrderString(o, "status", "orderStatus", "order_status")),
+                                firstOrderString(o, "full_name", "fullName", "customerName", "customer_name", "name"),
                                 oPhone,
-                                o.optString("address", ""),
-                                o.optString("payment_method", o.optString("paymentMethod", "COD"))
+                                firstOrderString(o, "address", "shippingAddress", "shipping_address", "deliveryAddress", "delivery_address"),
+                                firstOrderString(o, "payment_method", "paymentMethod", "payment")
                         ));
                     }
                     mainHandler.post(() -> callback.onSuccess(list));
@@ -557,9 +555,211 @@ public class ApiClient {
                     mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
                 }
             } catch (Exception e) {
-                mainHandler.post(() -> callback.onSuccess(new ArrayList<>()));
+                String message = "Không tải được đơn hàng: " + e.getMessage();
+                mainHandler.post(() -> callback.onError(message));
             }
         });
+    }
+
+    private static List<JSONObject> parseOrderObjects(Object root) throws org.json.JSONException {
+        List<JSONObject> orders = new ArrayList<>();
+        Object payload = root;
+        for (String wrapper : new String[]{"data", "orders", "result"}) {
+            if (payload instanceof JSONObject) {
+                JSONObject object = (JSONObject) payload;
+                if (isOrderRecord(object)) break;
+                Object nested = object.opt(wrapper);
+                if (nested != null && nested != JSONObject.NULL) {
+                    payload = nested;
+                    continue;
+                }
+            }
+            break;
+        }
+        collectOrderObjects(payload, orders);
+        return orders;
+    }
+
+    private static void collectOrderObjects(Object value, List<JSONObject> orders) throws org.json.JSONException {
+        if (value instanceof JSONArray) {
+            JSONArray array = (JSONArray) value;
+            for (int i = 0; i < array.length(); i++) {
+                collectOrderObjects(array.opt(i), orders);
+            }
+        } else if (value instanceof JSONObject) {
+            JSONObject object = (JSONObject) value;
+            if (isOrderRecord(object)) {
+                orders.add(object);
+                return;
+            }
+            for (Iterator<String> keys = object.keys(); keys.hasNext();) {
+                String key = keys.next();
+                Object child = object.opt(key);
+                if (child instanceof JSONObject && isOrderRecord((JSONObject) child)) {
+                    JSONObject order = (JSONObject) child;
+                    if (firstOrderString(order, "orderId", "order_id", "orderCode", "order_code", "id").isEmpty()) {
+                        order.put("id", key);
+                    }
+                }
+                collectOrderObjects(child, orders);
+            }
+        }
+    }
+
+    private static boolean isOrderRecord(JSONObject object) {
+        return object.has("items") || object.has("orderId") || object.has("order_id")
+                || object.has("orderCode") || object.has("order_code")
+                || object.has("phone") || object.has("customerPhone") || object.has("customer_phone")
+                || object.has("phoneNumber") || object.has("phone_number");
+    }
+
+    private static List<CartItem> parseOrderItems(Object value) {
+        List<CartItem> items = new ArrayList<>();
+        List<JSONObject> itemObjects = new ArrayList<>();
+        collectOrderItems(value, itemObjects);
+        for (JSONObject item : itemObjects) {
+            JSONObject productData = item.optJSONObject("product");
+            if (productData == null) productData = item.optJSONObject("productDetails");
+            if (productData == null) productData = item.optJSONObject("product_details");
+            JSONObject source = productData == null ? item : productData;
+            String productId = firstOrderString(source, "id", "productId", "product_id", "productCode", "product_code");
+            String productName = firstOrderString(source, "name", "product_name", "productName", "title");
+            if (productName.isEmpty()) productName = "Sản phẩm";
+            Product product = new Product(
+                    productId.isEmpty() ? "p1" : productId,
+                    productName,
+                    firstOrderDouble(source, "price", "unitPrice", "unit_price"),
+                    0, 0, 5.0f, 0, "", "",
+                    R.drawable.ic_product_placeholder,
+                    "", "", "", "", "", false, false
+            );
+            int quantity = Math.max(1, (int) firstOrderDouble(item, "quantity", "qty", "count"));
+            items.add(new CartItem(product, quantity));
+        }
+        return items;
+    }
+
+    private static void collectOrderItems(Object value, List<JSONObject> items) {
+        if (value instanceof JSONArray) {
+            JSONArray array = (JSONArray) value;
+            for (int i = 0; i < array.length(); i++) {
+                collectOrderItems(array.opt(i), items);
+            }
+        } else if (value instanceof JSONObject) {
+            JSONObject object = (JSONObject) value;
+            if (object.has("product") || object.has("productDetails") || object.has("product_details")
+                    || object.has("product_name") || object.has("productName")
+                    || object.has("quantity") || object.has("qty")) {
+                items.add(object);
+                return;
+            }
+            for (Iterator<String> keys = object.keys(); keys.hasNext();) {
+                collectOrderItems(object.opt(keys.next()), items);
+            }
+        }
+    }
+
+    private static String firstOrderString(JSONObject object, String... keys) {
+        for (String key : keys) {
+            Object value = object.opt(key);
+            if (value instanceof String || value instanceof Number) {
+                String text = String.valueOf(value).trim();
+                if (!text.isEmpty() && !"null".equalsIgnoreCase(text)) return text;
+            }
+        }
+        return "";
+    }
+
+    private static double firstOrderDouble(JSONObject object, String... keys) {
+        for (String key : keys) {
+            Object value = object.opt(key);
+            if (value instanceof Number) return ((Number) value).doubleValue();
+            if (value instanceof String) {
+                try {
+                    return Double.parseDouble(((String) value).replace(",", "").trim());
+                } catch (NumberFormatException ignored) {
+                    // Try the next known field name.
+                }
+            }
+        }
+        return 0;
+    }
+
+    private static String normalizePhone(String phone) {
+        if (phone == null) return "";
+        String digits = phone.replaceAll("\\D", "");
+        if (digits.startsWith("84") && digits.length() == 11) {
+            return "0" + digits.substring(2);
+        }
+        return digits;
+    }
+
+    private static String normalizeOrderStatus(String status) {
+        if (status == null || status.trim().isEmpty()) return "Chờ xác nhận";
+        String normalized = status.trim().toLowerCase(java.util.Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        switch (normalized) {
+            case "pending":
+            case "waiting":
+            case "waiting_confirmation":
+            case "pending_confirmation":
+                return "Chờ xác nhận";
+            case "confirmed":
+            case "processing":
+            case "preparing":
+            case "packed":
+                return "Đang chuẩn bị";
+            case "shipping":
+            case "shipped":
+            case "on_the_way":
+            case "out_for_delivery":
+                return "Đang giao";
+            case "delivered":
+            case "completed":
+            case "received":
+                return "Đã giao";
+            case "cancelled":
+            case "canceled":
+                return "Đã hủy";
+            default:
+                return status.trim();
+        }
+    }
+
+    private static boolean orderBelongsToPhone(JSONObject order, String phone) {
+        String normalizedPhone = normalizePhone(phone);
+        for (String key : new String[]{"phone", "customerPhone", "customer_phone", "phoneNumber", "phone_number", "mobile", "userPhone", "user_phone"}) {
+            String candidate = normalizePhone(firstOrderString(order, key));
+            if (!candidate.isEmpty() && candidate.equals(normalizedPhone)) return true;
+        }
+        String nestedPhone = normalizePhone(findNestedCustomerPhone(order));
+        if (!nestedPhone.isEmpty() && nestedPhone.equals(normalizedPhone)) return true;
+        return false;
+    }
+
+    private static String findNestedCustomerPhone(JSONObject order) {
+        for (String key : new String[]{
+                "customer", "customerInfo", "customer_info", "buyer", "user", "userInfo", "user_info", "account"
+        }) {
+            JSONObject customer = order.optJSONObject(key);
+            String phone = findPhoneInCustomerObject(customer, 0);
+            if (!phone.isEmpty()) return phone;
+        }
+        return "";
+    }
+
+    private static String findPhoneInCustomerObject(JSONObject customer, int depth) {
+        if (customer == null || depth > 3) return "";
+        String phone = firstOrderString(customer,
+                "phone", "phoneNumber", "phone_number", "mobile", "mobileNumber", "mobile_number");
+        if (!phone.isEmpty()) return phone;
+
+        for (String key : new String[]{"profile", "contact", "details", "info"}) {
+            String nestedPhone = findPhoneInCustomerObject(customer.optJSONObject(key), depth + 1);
+            if (!nestedPhone.isEmpty()) return nestedPhone;
+        }
+        return "";
     }
 
     public static void fetchReviews(String productCode, ApiCallback<List<com.example.appnhathuoc.model.ReviewItem>> callback) {

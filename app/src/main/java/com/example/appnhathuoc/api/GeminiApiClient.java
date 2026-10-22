@@ -40,7 +40,7 @@ public class GeminiApiClient {
     }
 
     private static final String GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY;
-    private static final String GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+    private static final String GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
     private static final String TAG = "GeminiApiClient";
 
     private static final ExecutorService executor = Executors.newFixedThreadPool(3);
@@ -60,13 +60,15 @@ public class GeminiApiClient {
                 "- Nhu cầu Calo TDEE: " + tdee + " kcal/ngày\n" +
                 "- Cân nặng: " + weightKg + " kg\n" +
                 "- Mục tiêu sức khỏe: " + (goal.isEmpty() ? "Sức khỏe toàn diện & Duy trì thể lực" : goal) + "\n\n" +
-                "Hãy tạo lộ trình cá nhân hóa dựa trên đầy đủ các chỉ số trên. Nếu thiếu dữ liệu quan trọng, hãy nói rõ giả định hoặc hỏi thêm, không tự suy đoán. " +
-                "Đóng vai Dược sĩ tư vấn dinh dưỡng và sức khỏe tại nhà thuốc, trả lời chu đáo, chi tiết, ấm áp gồm:\n" +
-                "1. Lời khuyên & Đánh giá thể trạng từ Dược sĩ.\n" +
-                "2. Chế độ dinh dưỡng & thực đơn khuyên dùng (Phân bổ calo, protein, tinh bột, lượng nước uống).\n" +
-                "3. Lộ trình rèn luyện thể thao & nghỉ ngơi hợp lý.\n" +
-                "4. Lưu ý về thực phẩm bổ sung & vi chất một cách thận trọng; không tự đề xuất liều thuốc/thực phẩm bổ sung nếu thiếu thông tin bệnh nền, dị ứng, thai kỳ hoặc thuốc đang dùng.\n\n" +
-                "Yêu cầu: Trả lời bằng tiếng Việt, ấm áp, tận tâm, xưng Dược sĩ tư vấn/mình, tuyệt đối không xưng AI, Gemini hay MEDCARE.";
+                "Hãy tạo kế hoạch chăm sóc sức khỏe tổng quát, không phải phác đồ điều trị hay đơn thuốc. Chỉ dựa trên dữ liệu đã cung cấp; " +
+                "nêu rõ giới hạn của BMI/TDEE và không kết luận bệnh. Nếu thiếu bệnh nền, dị ứng, thuốc đang dùng, thai kỳ/cho con bú hoặc mức vận động, " +
+                "hãy nêu giới hạn và khuyên người dùng trao đổi chuyên gia trước khi áp dụng thay vì tự suy đoán.\n\n" +
+                "Trình bày theo các mục ngắn, thực tế:\n" +
+                "1. Tóm tắt chỉ số và lưu ý rằng đây chỉ là tham khảo.\n" +
+                "2. Gợi ý ăn uống cân bằng, không đặt mục tiêu calo cực đoan hoặc đề xuất thực phẩm bổ sung/thuốc.\n" +
+                "3. Vận động và nghỉ ngơi phù hợp, tăng dần theo thể trạng.\n" +
+                "4. Theo dõi tiến triển và dấu hiệu cần gặp chuyên gia y tế.\n\n" +
+                "Trả lời tiếng Việt tự nhiên, ấm áp, chuyên nghiệp. Minh bạch rằng bạn là trợ lý AI, không giả làm dược sĩ/bác sĩ thật.";
 
         generateAiResponse(healthPrompt, callback);
     }
@@ -121,12 +123,14 @@ public class GeminiApiClient {
                 JSONArray instructionParts = new JSONArray();
                 JSONObject instructionPart = new JSONObject();
                 instructionPart.put("text",
-                        "Bạn là dược sĩ tư vấn trực tuyến của nhà thuốc, giao tiếp bằng tiếng Việt tự nhiên, thân thiện, " +
-                        "ấm áp như một cuộc trò chuyện với khách hàng. Hãy ghi nhớ các lượt trao đổi trước để trả lời đúng ngữ cảnh, " +
-                        "đặt câu hỏi ngắn để làm rõ khi thiếu thông tin. Không chẩn đoán bệnh và không tự kê đơn; trước khi nói về thuốc " +
-                        "hoặc liều dùng cần hỏi tuổi, dị ứng, bệnh nền, thai kỳ/cho con bú và thuốc đang dùng khi phù hợp. " +
-                        "Không bịa thông tin; nêu rõ giới hạn tư vấn từ xa. Với dấu hiệu nguy hiểm hoặc triệu chứng nặng, khuyên liên hệ " +
-                        "cấp cứu/cơ sở y tế ngay. Xưng mình hoặc Dược sĩ tư vấn, không nhận mình là bác sĩ.");
+                        "Bạn là trợ lý AI sức khỏe của một nhà thuốc, không phải dược sĩ hay bác sĩ thật. Hãy minh bạch điều này, " +
+                        "giao tiếp bằng tiếng Việt tự nhiên, thân thiện và chuyên nghiệp; ghi nhớ các lượt trao đổi trước để trả lời đúng ngữ cảnh. " +
+                        "Không chẩn đoán bệnh, không tự kê đơn và không tự tạo phác đồ điều trị. Khi thiếu dữ liệu, hỏi ngắn gọn về tuổi, " +
+                        "triệu chứng và thời gian mắc; trước khi cung cấp thông tin thuốc cần cân nhắc dị ứng, bệnh nền, thai kỳ/cho con bú " +
+                        "và thuốc đang dùng. Không đoán liều hoặc bịa thông tin; ưu tiên hướng dẫn trên nhãn thuốc và chỉ định của chuyên gia. " +
+                        "Có thể giúp người dùng ghi lại đúng chỉ định họ đã nhận từ dược sĩ/bác sĩ nhưng không tự xác nhận chỉ định đó là an toàn. " +
+                        "Với dấu hiệu nguy hiểm như khó thở, đau ngực, ngất, phản ứng dị ứng nặng hoặc triệu chứng nặng lên nhanh, khuyên gọi 115 " +
+                        "hoặc đến cơ sở y tế ngay. Với kế hoạch sức khỏe, chỉ đưa gợi ý lối sống tổng quát, nêu giới hạn và khi nào cần gặp chuyên gia.");
                 instructionParts.put(instructionPart);
                 systemInstruction.put("parts", instructionParts);
                 jsonBody.put("systemInstruction", systemInstruction);
@@ -215,6 +219,12 @@ public class GeminiApiClient {
                 break;
             case 429:
                 message = "Gemini đã hết quota hoặc vượt giới hạn tốc độ (HTTP 429). Kiểm tra quota/billing và thử lại sau.";
+                break;
+            case 502:
+            case 503:
+            case 504:
+                message = "Dịch vụ Gemini đang tạm thời không khả dụng (HTTP " + responseCode +
+                        "). Đây thường không phải lỗi API key. Vui lòng đợi vài phút rồi gửi lại; nếu vẫn gặp lỗi, thử lại sau hoặc kiểm tra trạng thái dịch vụ Gemini.";
                 break;
             default:
                 message = "Gemini trả về lỗi HTTP " + responseCode + ".";
